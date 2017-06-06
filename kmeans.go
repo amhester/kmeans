@@ -67,7 +67,7 @@ func (observation Observation) OuterProduct(otherObservation Observation) [][]fl
 
 // Find the closest observation and return the distance
 // Index of observation, distance
-func near(p ClusteredObservation, mean []Observation, distanceFunction DistanceFunction) (int, float64) {
+func Near(p ClusteredObservation, mean []Observation, distanceFunction DistanceFunction) (int, float64) {
 	indexOfCluster := 0
 	minSquaredDistance, _ := distanceFunction(p.Observation, mean[0])
 	for i := 1; i < len(mean); i++ {
@@ -88,7 +88,7 @@ func seed(data []ClusteredObservation, k int, distanceFunction DistanceFunction)
 	for ii := 1; ii < k; ii++ {
 		var sum float64
 		for jj, p := range data {
-			_, dMin := near(p, s[:ii], distanceFunction)
+			_, dMin := Near(p, s[:ii], distanceFunction)
 			d2[jj] = dMin * dMin
 			sum += d2[jj]
 		}
@@ -103,10 +103,10 @@ func seed(data []ClusteredObservation, k int, distanceFunction DistanceFunction)
 }
 
 // K-Means Algorithm
-func kmeans(data []ClusteredObservation, mean []Observation, distanceFunction DistanceFunction, threshold int) ([]ClusteredObservation, error) {
+func kmeans(data []ClusteredObservation, mean []Observation, distanceFunction DistanceFunction, threshold int) ([]ClusteredObservation, []Observation, error) {
 	counter := 0
 	for ii, jj := range data {
-		closestCluster, _ := near(jj, mean, distanceFunction)
+		closestCluster, _ := Near(jj, mean, distanceFunction)
 		data[ii].ClusterNumber = closestCluster
 	}
 	mLen := make([]int, len(mean))
@@ -124,31 +124,31 @@ func kmeans(data []ClusteredObservation, mean []Observation, distanceFunction Di
 		}
 		var changes int
 		for ii, p := range data {
-			if closestCluster, _ := near(p, mean, distanceFunction); closestCluster != p.ClusterNumber {
+			if closestCluster, _ := Near(p, mean, distanceFunction); closestCluster != p.ClusterNumber {
 				changes++
 				data[ii].ClusterNumber = closestCluster
 			}
 		}
 		counter++
 		if changes == 0 || counter > threshold {
-			return data, nil
+			return data, mean, nil
 		}
 	}
-	return data, nil
+	return data, mean, nil
 }
 
 // K-Means Algorithm with smart seeds
 // as known as K-Means ++
-func Kmeans(rawData [][]float64, k int, distanceFunction DistanceFunction, threshold int) ([]int, error) {
+func Kmeans(rawData [][]float64, k int, distanceFunction DistanceFunction, threshold int) ([]int, []Observation, error) {
 	data := make([]ClusteredObservation, len(rawData))
 	for ii, jj := range rawData {
 		data[ii].Observation = jj
 	}
 	seeds := seed(data, k, distanceFunction)
-	clusteredData, err := kmeans(data, seeds, distanceFunction, threshold)
+	clusteredData, means, err := kmeans(data, seeds, distanceFunction, threshold)
 	labels := make([]int, len(clusteredData))
 	for ii, jj := range clusteredData {
 		labels[ii] = jj.ClusterNumber
 	}
-	return labels, err
+	return labels, means, err
 }
